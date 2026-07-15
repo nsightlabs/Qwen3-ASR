@@ -182,6 +182,9 @@ def copy_required_hf_files_for_qwen_asr(src_dir: str, dst_dir: str):
         src = os.path.join(src_dir, fn)
         if os.path.exists(src):
             shutil.copy2(src, os.path.join(dst_dir, fn))
+            print(src, True)
+        else:
+            print(src, False)
 
 
 class MakeEveryCheckpointInferableCallback(TrainerCallback):

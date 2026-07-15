@@ -217,6 +217,7 @@ def parse_args():
     p.add_argument("--grad_acc", type=int, default=4)
     p.add_argument("--lr", type=float, default=2e-5)
     p.add_argument("--epochs", type=float, default=1)
+    p.add_argument("--max_steps", type=int, default=-1)
     p.add_argument("--log_steps", type=int, default=10)
     p.add_argument("--lr_scheduler_type", type=str, default="linear")
     p.add_argument("--warmup_ratio", type=float, default=0.02)
@@ -284,6 +285,7 @@ def main():
         gradient_accumulation_steps=args_cli.grad_acc,
         learning_rate=args_cli.lr,
         num_train_epochs=args_cli.epochs,
+        max_steps=args_cli.max_steps,
         logging_steps=args_cli.log_steps,
         lr_scheduler_type=args_cli.lr_scheduler_type,
         warmup_ratio=args_cli.warmup_ratio,

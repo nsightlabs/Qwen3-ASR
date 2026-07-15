@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional
 import librosa
 import torch
 from datasets import load_dataset
+from huggingface_hub import hf_hub_download
 from qwen_asr import Qwen3ASRModel
 from transformers import (GenerationConfig, Trainer, TrainerCallback,
                           TrainingArguments)
@@ -167,24 +168,23 @@ class CastFloatInputsTrainer(Trainer):
 def copy_required_hf_files_for_qwen_asr(src_dir: str, dst_dir: str):
     os.makedirs(dst_dir, exist_ok=True)
     required = [
-        "config.json",
-        "generation_config.json",
+        # "config.json",
+        # "generation_config.json",
         "preprocessor_config.json",
-        "processor_config.json",
-        "tokenizer_config.json",
-        "tokenizer.json",
-        "special_tokens_map.json",
+        # "processor_config.json",
+        # "tokenizer_config.json",
+        # "tokenizer.json",
+        # "special_tokens_map.json",
         "chat_template.json",
-        "merges.txt",
-        "vocab.json",
+        # "merges.txt",
+        # "vocab.json",
     ]
     for fn in required:
-        src = os.path.join(src_dir, fn)
-        if os.path.exists(src):
-            shutil.copy2(src, os.path.join(dst_dir, fn))
-            print(src, True)
-        else:
-            print(src, False)
+        cached_path = hf_hub_download(repo_id=src_dir, filename=fn)
+        shutil.copy(cached_path, os.path.join(dst_dir, fn))
+        # src = os.path.join(src_dir, fn)
+        # if os.path.exists(src):
+        #     shutil.copy2(src, os.path.join(dst_dir, fn))            
 
 
 class MakeEveryCheckpointInferableCallback(TrainerCallback):

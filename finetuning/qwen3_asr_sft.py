@@ -299,7 +299,7 @@ def main():
         eval_steps=args_cli.save_steps,
         do_eval=bool(args_cli.eval_file),
         bf16=use_bf16,
-        fp16=use_fp16,
+        fp16=args_cli.use_fp16,
         ddp_find_unused_parameters=False,
         remove_unused_columns=False,
         report_to="none",

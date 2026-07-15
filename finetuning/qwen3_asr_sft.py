@@ -180,8 +180,10 @@ def copy_required_hf_files_for_qwen_asr(src_dir: str, dst_dir: str):
         # "vocab.json",
     ]
     for fn in required:
-        cached_path = hf_hub_download(repo_id=src_dir, filename=fn)
-        shutil.copy(cached_path, os.path.join(dst_dir, fn))
+        pass
+        # cached_path = hf_hub_download(repo_id=src_dir, filename=fn)
+        # shutil.copy(cached_path, os.path.join(dst_dir, fn))
+        
         # src = os.path.join(src_dir, fn)
         # if os.path.exists(src):
         #     shutil.copy2(src, os.path.join(dst_dir, fn))            

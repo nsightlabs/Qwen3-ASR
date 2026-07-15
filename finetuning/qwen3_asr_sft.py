@@ -213,7 +213,8 @@ def parse_args():
     p.add_argument("--sr", type=int, default=16000)
 
     # Train hyper-params
-    p.add_argument("--batch_size", type=int, default=32)
+    p.add_argument("--train_batch_size", type=int, default=32)
+    p.add_argument("--eval_batch_size", type=int, default=32)
     p.add_argument("--grad_acc", type=int, default=4)
     p.add_argument("--lr", type=float, default=2e-5)
     p.add_argument("--epochs", type=float, default=1)
@@ -281,7 +282,8 @@ def main():
 
     training_args = TrainingArguments(
         output_dir=args_cli.output_dir,
-        per_device_train_batch_size=args_cli.batch_size,
+        per_device_train_batch_size=args_cli.train_batch_size,
+        per_device_eval_batch_size=args_cli.eval_batch_size,
         gradient_accumulation_steps=args_cli.grad_acc,
         learning_rate=args_cli.lr,
         num_train_epochs=args_cli.epochs,

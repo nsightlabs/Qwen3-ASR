@@ -235,6 +235,10 @@ def parse_args():
     # Resume
     p.add_argument("--resume_from", type=str, default="")
     p.add_argument("--resume", type=int, default=0)
+    
+    # Precision
+    p.add_argument("--bf16", action="store_true", help="Use bf16 if available")
+    p.add_argument("--fp16", action="store_true", help="Use fp16 if available")
 
     return p.parse_args()
 
@@ -245,7 +249,7 @@ def main():
     if not args_cli.train_file:
         raise ValueError("TRAIN_FILE is required (json/jsonl). Needs fields: audio, text, optional prompt")
 
-    use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
+    use_bf16 = args_cli.bf16 and torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     asr_wrapper = Qwen3ASRModel.from_pretrained(
         args_cli.model_path,
         dtype=torch.bfloat16 if use_bf16 else torch.float16,
@@ -295,7 +299,7 @@ def main():
         eval_steps=args_cli.save_steps,
         do_eval=bool(args_cli.eval_file),
         bf16=use_bf16,
-        fp16=not use_bf16,
+        fp16=use_fp16,
         ddp_find_unused_parameters=False,
         remove_unused_columns=False,
         report_to="none",

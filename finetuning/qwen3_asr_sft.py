@@ -258,7 +258,7 @@ def main():
     elif args_cli.fp16:
         dtype = torch.float32
     else:
-        dtype = torch.float16
+        dtype = torch.float32
         
     asr_wrapper = Qwen3ASRModel.from_pretrained(
         args_cli.model_path,

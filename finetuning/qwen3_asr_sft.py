@@ -256,7 +256,7 @@ def main():
     if use_bf16:
         dtype = torch.bfloat16
     elif args_cli.fp16:
-        dtype = torch.float16
+        dtype = torch.float32
     else:
         dtype = torch.float32
         

@@ -314,7 +314,7 @@ def main():
         fp16=args_cli.fp16,
         ddp_find_unused_parameters=False,
         remove_unused_columns=False,
-        gradient_checkpointing=True,
+        # gradient_checkpointing=True,
         optim="adamw_bnb_8bit",
         report_to="none",
     )

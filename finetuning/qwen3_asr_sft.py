@@ -253,9 +253,16 @@ def main():
         raise ValueError("TRAIN_FILE is required (json/jsonl). Needs fields: audio, text, optional prompt")
 
     use_bf16 = args_cli.bf16 and torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
+    if use_bf16:
+        dtype = torch.bfloat16
+    elif args_cli.fp16:
+        dtype = torch.float16
+    else:
+        dtype = torch.float32
+        
     asr_wrapper = Qwen3ASRModel.from_pretrained(
         args_cli.model_path,
-        dtype=torch.bfloat16 if use_bf16 else torch.float16,
+        dtype=dtype,
         device_map=None,
     )
     model = asr_wrapper.model

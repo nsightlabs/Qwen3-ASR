@@ -244,6 +244,9 @@ def parse_args():
     # Precision
     p.add_argument("--bf16", action="store_true", help="Use bf16 if available")
     p.add_argument("--fp16", action="store_true", help="Use fp16 if available")
+    
+    # Monitoring
+    p.add_argument("--report_to", type=str, default="none")
 
     return p.parse_args()
 
@@ -318,7 +321,7 @@ def main():
         remove_unused_columns=False,
         gradient_checkpointing=args_cli.gradient_checkpointing,
         optim=args_cli.optim,
-        report_to="none",
+        report_to=args_cli.report_to,
     )
 
     trainer = CastFloatInputsTrainer(

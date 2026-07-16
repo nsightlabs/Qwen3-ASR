@@ -223,6 +223,8 @@ def parse_args():
     p.add_argument("--log_steps", type=int, default=10)
     p.add_argument("--lr_scheduler_type", type=str, default="linear")
     p.add_argument("--warmup_ratio", type=float, default=0.02)
+    p.add_argument("--optim", type=str, default="adamw_bnb_8bit")
+    p.add_argument("--gradient_checkpointing", action="store_true", help="Use gradient checkpointing")
 
     # DataLoader
     p.add_argument("--num_workers", type=int, default=4)
@@ -314,8 +316,8 @@ def main():
         fp16=args_cli.fp16,
         ddp_find_unused_parameters=False,
         remove_unused_columns=False,
-        # gradient_checkpointing=True,
-        optim="adamw_bnb_8bit",
+        gradient_checkpointing=args_cli.gradient_checkpointing,
+        optim=args_cli.optim,
         report_to="none",
     )
 

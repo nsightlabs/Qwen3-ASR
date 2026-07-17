@@ -257,7 +257,8 @@ def main():
     if not args_cli.train_file:
         raise ValueError("TRAIN_FILE is required (json/jsonl). Needs fields: audio, text, optional prompt")
 
-    use_bf16 = args_cli.bf16 and torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
+    #use_bf16 = args_cli.bf16 and torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
+    use_bf16 = args_cli.bf16 and torch.cuda.is_available()
     if use_bf16:
         dtype = torch.bfloat16
     elif args_cli.fp16:

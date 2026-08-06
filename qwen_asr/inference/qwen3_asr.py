@@ -303,6 +303,8 @@ class Qwen3ASRModel:
         context: Union[str, List[str]] = "",
         language: Optional[Union[str, List[Optional[str]]]] = None,
         return_time_stamps: bool = False,
+        skip_special_tokens: bool = True,
+        clean_up_tokenization_spaces: bool = False,
     ) -> List[ASRTranscription]:
         """
         Transcribe audio with optional context and optional forced alignment timestamps.
@@ -380,7 +382,7 @@ class Qwen3ASRModel:
         chunk_ctx: List[str] = [ctxs[c.orig_index] for c in chunks]
         chunk_lang: List[Optional[str]] = [langs_norm[c.orig_index] for c in chunks]
         chunk_wavs: List[np.ndarray] = [c.wav for c in chunks]
-        raw_outputs = self._infer_asr(chunk_ctx, chunk_wavs, chunk_lang)
+        raw_outputs = self._infer_asr(chunk_ctx, chunk_wavs, chunk_lang, skip_special_tokens, clean_up_tokenization_spaces)
 
         # parse outputs, prepare for optional alignment
         per_chunk_lang: List[str] = []
@@ -469,6 +471,8 @@ class Qwen3ASRModel:
         contexts: List[str],
         wavs: List[np.ndarray],
         languages: List[Optional[str]],
+        skip_special_tokens: bool,
+        clean_up_tokenization_spaces: bool
     ) -> List[str]:
         """
         Run backend inference for chunk-level items.
@@ -482,7 +486,7 @@ class Qwen3ASRModel:
             List[str]: Raw decoded strings (one per chunk).
         """
         if self.backend == "transformers":
-            return self._infer_asr_transformers(contexts, wavs, languages)
+            return self._infer_asr_transformers(contexts, wavs, languages, skip_special_tokens, clean_up_tokenization_spaces)
         if self.backend == "vllm":
             return self._infer_asr_vllm(contexts, wavs, languages)
         raise RuntimeError(f"Unknown backend: {self.backend}")
@@ -492,6 +496,8 @@ class Qwen3ASRModel:
         contexts: List[str],
         wavs: List[np.ndarray],
         languages: List[Optional[str]],
+        skip_special_tokens: bool,
+        clean_up_tokenization_spaces: bool,
     ) -> List[str]:
         outs: List[str] = []
 
@@ -511,8 +517,8 @@ class Qwen3ASRModel:
 
             decoded = self.processor.batch_decode(
                 text_ids.sequences[:, inputs["input_ids"].shape[1]:],
-                skip_special_tokens=True,
-                clean_up_tokenization_spaces=False,
+                skip_special_tokens=skip_special_tokens,
+                clean_up_tokenization_spaces=clean_up_tokenization_spaces,
             )
             outs.extend(list(decoded))
 

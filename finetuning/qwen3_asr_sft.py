@@ -27,6 +27,9 @@ from huggingface_hub import hf_hub_download
 from qwen_asr import Qwen3ASRModel
 from transformers import (GenerationConfig, Trainer, TrainerCallback,
                           TrainingArguments)
+import json
+from collections import Counter
+from typing import List, Tuple, Optional
 
 
 def patch_outer_forward(model):
@@ -199,6 +202,57 @@ class MakeEveryCheckpointInferableCallback(TrainerCallback):
 
         copy_required_hf_files_for_qwen_asr(self.base_model_path, ckpt_dir)
         return control
+    
+def extract_new_tokens(
+    train_file: str,
+    tokenizer,
+    min_freq: int = 5,
+    max_fragments_ok: int = 1,
+    top_k: int = 500,
+) -> List[Tuple[str, int, int]]:
+    """
+    Scan a jsonl train file and find whole words that the tokenizer currently
+    splits into more than `max_fragments_ok` subword pieces, ranked by how
+    often they appear (frequency-weighted "impact" of fixing each one).
+ 
+    Returns a list of (word, frequency, n_pieces_before) tuples, most
+    impactful first.
+    """
+    word_counter = Counter()
+    with open(train_file, "r") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            rec = json.loads(line)
+            text = rec["text"].split("<asr_text>")[1].strip()
+            if not text:
+                continue
+            for word in text.split():
+                word_counter[word] += 1
+ 
+    candidates = []
+    for word, freq in word_counter.items():
+        if freq < min_freq:
+            continue
+        n_pieces = len(tokenizer.tokenize(word))
+        if n_pieces > max_fragments_ok:
+            candidates.append((word, freq, n_pieces))
+ 
+    # Rank by frequency: fixing a word that appears 500 times helps far more
+    # than fixing one that appears 5 times, even if both fragment equally badly.
+    candidates.sort(key=lambda x: x[1], reverse=True)
+    return candidates[:top_k]
+    
+def add_tokens_and_resize(model, tokenizer, new_tokens: List[str]) -> int:
+    """
+    Add `new_tokens` (plain strings) to the tokenizer's vocabulary and resize
+    the model's embedding table (input embeddings + tied/untied LM head) to
+    match. Returns the number of tokens actually added (duplicates skipped).
+    """
+    num_added = tokenizer.add_tokens(new_tokens)
+    if num_added > 0:
+        model.resize_token_embeddings(len(tokenizer))
+    return num_added
 
 
 def parse_args():
@@ -247,12 +301,20 @@ def parse_args():
     
     # Monitoring
     p.add_argument("--report_to", type=str, default="none")
+    
+    # Tokenizer
+    p.add_argument("--add_tokens", action="store_true", help="Scan train file for new tokens to add to the tokenizer")
+    p.add_argument("--min_freq", type=int, default=5, help="Minimum frequency for a word to be considered for adding to the tokenizer")
+    p.add_argument("--max_fragments_ok", type=int, default=1, help="Maximum number of subword fragments allowed for a word to be considered for adding to the tokenizer")
+    p.add_argument("--top_k", type=int, default=500, help="Maximum number of new tokens to add to the tokenizer")
 
     return p.parse_args()
 
 
 def main():
     args_cli = parse_args()
+    for arg_name, arg_val in vars(args_cli).items():
+        print(f"{arg_name}: {arg_val}")
 
     if not args_cli.train_file:
         raise ValueError("TRAIN_FILE is required (json/jsonl). Needs fields: audio, text, optional prompt")
@@ -273,6 +335,24 @@ def main():
     )
     model = asr_wrapper.model
     processor = asr_wrapper.processor
+    
+    if args_cli.add_tokens:
+        candidates = extract_new_tokens(
+            args_cli.train_file,
+            processor.tokenizer,
+            min_freq=args_cli.min_freq,
+            max_fragments_ok=args_cli.max_fragments_ok,
+            top_k=args_cli.top_k,
+        )
+        for word, freq, n_pieces in candidates[:20]:
+            print(f"  {word!r:25} freq={freq:<6} pieces={n_pieces}")
+            
+        new_tokens = [w for w, _, _ in candidates]
+        before_size = len(processor.tokenizer)
+        num_added = add_tokens_and_resize(model, processor.tokenizer, new_tokens)
+        after_size = len(processor.tokenizer)
+        print(f"\nVocab size: {before_size} -> {after_size} ({num_added} tokens actually added, "
+            f"{len(new_tokens) - num_added} were already in the vocab)")
 
     patch_outer_forward(model)
     model.generation_config = GenerationConfig.from_model_config(model.config)

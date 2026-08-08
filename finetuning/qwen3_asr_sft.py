@@ -254,6 +254,26 @@ def extract_new_tokens(
 #         model.resize_token_embeddings(len(tokenizer))
 #     return num_added
 
+# def add_tokens_and_resize(model, tokenizer, new_tokens: List[str]) -> int:
+#     """
+#     Add `new_tokens` (plain strings) to the tokenizer's vocabulary and resize
+#     the underlying LM's embedding table (input embeddings + tied/untied LM head)
+#     to match. Returns the number of tokens actually added (duplicates skipped).
+#     """
+#     num_added = tokenizer.add_tokens(new_tokens)
+#     if num_added > 0:
+#         # The outer Qwen3ASRForConditionalGeneration wrapper doesn't implement
+#         # get_input_embeddings/set_input_embeddings itself — the real LM lives
+#         # in .thinker, so resize must happen there.
+#         target = model.thinker if hasattr(model, "thinker") else model
+#         target.resize_token_embeddings(len(tokenizer))
+
+#         # Keep configs in sync (some inference/save paths read vocab_size
+#         # off the outer config too).
+#         if hasattr(model, "config") and hasattr(target, "config"):
+#             model.config.vocab_size = target.config.vocab_size
+#     return num_added
+
 def add_tokens_and_resize(model, tokenizer, new_tokens: List[str]) -> int:
     """
     Add `new_tokens` (plain strings) to the tokenizer's vocabulary and resize
@@ -262,16 +282,22 @@ def add_tokens_and_resize(model, tokenizer, new_tokens: List[str]) -> int:
     """
     num_added = tokenizer.add_tokens(new_tokens)
     if num_added > 0:
-        # The outer Qwen3ASRForConditionalGeneration wrapper doesn't implement
-        # get_input_embeddings/set_input_embeddings itself — the real LM lives
-        # in .thinker, so resize must happen there.
         target = model.thinker if hasattr(model, "thinker") else model
         target.resize_token_embeddings(len(tokenizer))
 
-        # Keep configs in sync (some inference/save paths read vocab_size
-        # off the outer config too).
-        if hasattr(model, "config") and hasattr(target, "config"):
-            model.config.vocab_size = target.config.vocab_size
+        # Best-effort: keep any top-level vocab_size fields in sync with the
+        # new tokenizer length. Different config attribute names/nesting
+        # across model versions, so this is deliberately defensive.
+        new_len = len(tokenizer)
+        for cfg in {getattr(model, "config", None), getattr(target, "config", None)}:
+            if cfg is None:
+                continue
+            if hasattr(cfg, "vocab_size"):
+                cfg.vocab_size = new_len
+            # some ASR wrapper configs nest a text_config with its own vocab_size
+            text_cfg = getattr(cfg, "text_config", None)
+            if text_cfg is not None and hasattr(text_cfg, "vocab_size"):
+                text_cfg.vocab_size = new_len
     return num_added
 
 

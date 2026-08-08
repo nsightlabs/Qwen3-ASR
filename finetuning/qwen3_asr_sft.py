@@ -243,15 +243,35 @@ def extract_new_tokens(
     candidates.sort(key=lambda x: x[1], reverse=True)
     return candidates[:top_k]
     
+# def add_tokens_and_resize(model, tokenizer, new_tokens: List[str]) -> int:
+#     """
+#     Add `new_tokens` (plain strings) to the tokenizer's vocabulary and resize
+#     the model's embedding table (input embeddings + tied/untied LM head) to
+#     match. Returns the number of tokens actually added (duplicates skipped).
+#     """
+#     num_added = tokenizer.add_tokens(new_tokens)
+#     if num_added > 0:
+#         model.resize_token_embeddings(len(tokenizer))
+#     return num_added
+
 def add_tokens_and_resize(model, tokenizer, new_tokens: List[str]) -> int:
     """
     Add `new_tokens` (plain strings) to the tokenizer's vocabulary and resize
-    the model's embedding table (input embeddings + tied/untied LM head) to
-    match. Returns the number of tokens actually added (duplicates skipped).
+    the underlying LM's embedding table (input embeddings + tied/untied LM head)
+    to match. Returns the number of tokens actually added (duplicates skipped).
     """
     num_added = tokenizer.add_tokens(new_tokens)
     if num_added > 0:
-        model.resize_token_embeddings(len(tokenizer))
+        # The outer Qwen3ASRForConditionalGeneration wrapper doesn't implement
+        # get_input_embeddings/set_input_embeddings itself — the real LM lives
+        # in .thinker, so resize must happen there.
+        target = model.thinker if hasattr(model, "thinker") else model
+        target.resize_token_embeddings(len(tokenizer))
+
+        # Keep configs in sync (some inference/save paths read vocab_size
+        # off the outer config too).
+        if hasattr(model, "config") and hasattr(target, "config"):
+            model.config.vocab_size = target.config.vocab_size
     return num_added
 
 
